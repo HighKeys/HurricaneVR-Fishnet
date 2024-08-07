@@ -12,8 +12,7 @@ public class NetworkGun : NetworkBehaviour
 {
     private CustomHVRGunBase hVRGunBase;
 
-    [SyncVar(WritePermissions = WritePermission.ServerOnly)]
-    public bool isChambered;
+    public readonly SyncVar<bool> isChambered = new SyncVar<bool>(new SyncTypeSettings(WritePermission.ServerOnly));
 
     private void Awake()
     {
@@ -63,7 +62,7 @@ public class NetworkGun : NetworkBehaviour
     {
         base.OnStartClient();
         //I am not the owner and the gun is chambered on the server
-        if (!Owner.IsLocalClient && isChambered)
+        if (!Owner.IsLocalClient && isChambered.Value)
         {
             hVRGunBase.IsBulletChambered = true;
         }
@@ -103,12 +102,12 @@ public class NetworkGun : NetworkBehaviour
     [ServerRpc(RequireOwnership = true)]
     private void RPCChambered(bool chambered)
     {
-        isChambered = chambered;
+        isChambered.Value = chambered;
         ObserversChambered();
     }
     [ObserversRpc(ExcludeOwner = true)]
     private void ObserversChambered()
     {
-        hVRGunBase.IsBulletChambered = isChambered;
+        hVRGunBase.IsBulletChambered = isChambered.Value;
     }
 }

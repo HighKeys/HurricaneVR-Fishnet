@@ -15,11 +15,11 @@ public class NetworkGrabbable : NetworkBehaviour
 
     private bool isSocketed;
 
-    [SyncVar(WritePermissions = WritePermission.ServerOnly)]
-    private int socketId = -1;
+    private readonly SyncVar<int> socketId = new SyncVar<int>(new SyncTypeSettings(WritePermission.ServerOnly));
 
     private void Awake()
     {
+        socketId.Value = -1;
         //Always initialize the parent to null for correct positioning
         if (initializeUnparented)
         {
@@ -44,7 +44,7 @@ public class NetworkGrabbable : NetworkBehaviour
     private void OnGrabbed(HVRGrabberBase grabber, HVRGrabbable grabbable)
     {
         if (grabber.IsSocket) return;
-        if (socketId > 0)
+        if (socketId.Value > 0)
         {
             RPCUnSocket();
             //Debug.Log("Client tells server to unsocket", gameObject);
@@ -82,7 +82,7 @@ public class NetworkGrabbable : NetworkBehaviour
     }
     private void OnUnSocketed(HVRSocket socket, HVRGrabbable grabbable)
     {
-        if (socketId > 0)
+        if (socketId.Value > 0)
         {
             RPCUnSocket();
             //Debug.Log("Client tells server to unsocket", gameObject);
@@ -97,8 +97,8 @@ public class NetworkGrabbable : NetworkBehaviour
         if (hvrGrabbable.StartingSocket != null) {
             if (hvrGrabbable.StartingSocket.TryGetComponent<NetworkObject>(out var networkObject))
             {
-                socketId = networkObject.ObjectId;
-                TrySocket(socketId);
+                socketId.Value = networkObject.ObjectId;
+                TrySocket(socketId.Value);
                 //If the starting socket is not linked remove it or it can cause issues
                 if (!hvrGrabbable.LinkStartingSocket)
                 {
@@ -139,15 +139,15 @@ public class NetworkGrabbable : NetworkBehaviour
     [ServerRpc(RequireOwnership = true)]
     public void RPCSocket(int _socketId)
     {
-        socketId = _socketId;
-        ObserversSocketedGrabbable(socketId);
+        socketId.Value = _socketId;
+        ObserversSocketedGrabbable(socketId.Value);
     }
     [ServerRpc(RequireOwnership = false)]
     public void RPCUnSocket(NetworkConnection conn = null)
     {
-        if (socketId > 0)
+        if (socketId.Value > 0)
         {
-            socketId = -1;
+            socketId.Value = -1;
             //Take ownership if they are not already the owner
             if (Owner.ClientId != conn.ClientId) NetworkObject.GiveOwnership(conn);
             ObserversUnSocketedGrabbable();
@@ -170,7 +170,7 @@ public class NetworkGrabbable : NetworkBehaviour
         //The server has become the owner
         if (!Owner.IsValid || Owner.IsLocalClient)
         {
-            if (socketId > 0)
+            if (socketId.Value > 0)
             {
                 rb.isKinematic = true;
                 //transform.localPosition = Vector3.zero;
@@ -202,9 +202,9 @@ public class NetworkGrabbable : NetworkBehaviour
             }
             return;
         }
-        if (socketId > 0)
+        if (socketId.Value > 0)
         {
-            TrySocket(socketId, true);
+            TrySocket(socketId.Value, true);
         }
         else if(hvrGrabbable.IsSocketed)
         {
